@@ -1,0 +1,80 @@
+---
+title: "Practical Machine Learning Project"
+author: "You"
+date: "12/13/2019"
+output:
+  html_document:
+    df_print: paged
+    fig_height: 8
+    fig_width: 10
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Practical Machine Learning Project
+
+## Summary
+This project strives to apply the techniques of machine learning to the supplied dataset in order to develop the ability to predict if a measured activity is being performed correctly, specificall dumbbell curls. The dataset includes data capturing the movement of the body and the dumbbell when this activity is being performed both correctly and incorrectly. The model is built using 52 predictors which actually record the movement of different parts of the body and the dumbbell, using the random forest method in the "ranger" option. Applied to a validation dataset, it produced an accuracy of 99%.
+
+## Building the model
+
+First, it is necessary to load the datasets into R. We will take the dataset provided for training and split it to provide a training set and a validation set to test our model, but first we need to decide which predictors to use. Although the dataset provides a large number of variables (160), only 52 capture a large amount of information about the movement. Some other variables included were potentially considered, but had an enormous number of NA values. There was insufficient documentation to suggest why those variables had so many NA values, and the sheer number made an approach such as K nearest neighbors seem unwise, due to there being insufficient data to reliably extrapolate from. 
+```{r}
+library(caret)
+
+#load data
+testing <- read.csv("pml-testing.csv", header = TRUE)
+training_og <- read.csv("pml-training.csv", header = TRUE)
+
+#select predictors with both lots of data and direct relevance to activity
+
+preds <- c("roll_belt", "pitch_belt", "yaw_belt", "total_accel_belt", "gyros_belt_x",
+           "gyros_belt_y", "gyros_belt_z", "accel_belt_x", "accel_belt_y", "accel_belt_z",
+           "magnet_belt_x", "magnet_belt_y", "magnet_belt_z", "roll_arm", "pitch_arm",
+           "yaw_arm", "total_accel_arm", "gyros_arm_x", "gyros_arm_y", "gyros_arm_z",
+           "accel_arm_x", "accel_arm_y", "accel_arm_z", "magnet_arm_x", "magnet_arm_y",
+           "magnet_arm_z", "roll_dumbbell", "pitch_dumbbell", "yaw_dumbbell", "total_accel_dumbbell",
+           "gyros_dumbbell_x", "gyros_dumbbell_y", "gyros_dumbbell_z", "accel_dumbbell_x",
+           "accel_dumbbell_y", "accel_dumbbell_z", "magnet_dumbbell_x", "magnet_dumbbell_y",
+           "magnet_dumbbell_z", "roll_forearm", "pitch_forearm", "yaw_forearm", "total_accel_forearm",
+           "gyros_forearm_x", "gyros_forearm_y", "gyros_forearm_z", "accel_forearm_x",
+           "accel_forearm_y", "accel_forearm_z", "magnet_forearm_x", "magnet_forearm_y",
+           "magnet_forearm_z")
+
+#separate training set into training and validation sets - create index
+inTrain <- createDataPartition(training_og$classe, p = 0.75)[[1]]
+
+#actually separate
+training <- training_og[inTrain, c(preds, "classe")]
+validation <- training_og[-inTrain, c(preds, "classe")]
+```
+
+Now that we have loaded and partitioned the datasets, we can now apply our machine learning algorithm. The model is built using the random forest technique captured in the "ranger" option.
+```{r}
+#set a seed value
+set.seed(62433)
+
+#create a random forest model
+mdl <- train(classe ~ ., data = training, method = "ranger")
+
+mdl
+```
+
+```{r}
+#test against validation
+pred <- predict(mdl, newdata = validation)
+
+#check accuracy
+confusionMatrix(pred, validation$classe)
+```
+
+Using the confusion matrix function, we achieve a reported 99% accuracy rating, indicating excellent model performance. We can now apply this to the testing dataset and achieve the following results:
+```{r}
+test_pred <- predict(mdl, newdata = testing[,preds])
+
+summary(test_pred)
+```
+
